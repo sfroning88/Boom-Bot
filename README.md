@@ -9,8 +9,8 @@ To install Pip:<br>
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py<br>
 python3 get-pip.py<br>
 
-To install Flask:<br>
-pip3 install -r requirements.txt<br>
+To install Libraries:<br>
+python3 -m pip install --user -r requirements.txt<br>
 
 To authorize MacOs HuggingFace token:<br>
 echo 'export HUGGINGFACEHUB_API_TOKEN=hf_token_value' >> ~/.zshrc<br>
