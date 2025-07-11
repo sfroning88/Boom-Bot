@@ -12,6 +12,10 @@ python3 get-pip.py<br><br>
 To install Flask:<br>
 pip3 install -r requirements.txt<br><br>
 
+To authorize MacOs HuggingFace token:<br>
+echo 'export HUGGINGFACEHUB_API_TOKEN=hf_token_value' >> ~/.zshrc
+source ~/.zshrc
+
 To run the chat bot:<br>
 cd [your directory]<br>
 python3 app.py<br>
