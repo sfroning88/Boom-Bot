@@ -3,3 +3,4 @@ transformers
 accelerate
 torch
 pandas
+openpyxl
