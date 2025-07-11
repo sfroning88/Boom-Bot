@@ -9,7 +9,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Working Capital Bot</title>
+    <title>Boom Bot</title>
     <link
       rel="stylesheet"
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
@@ -31,50 +31,54 @@
   </head>
 
   <body>
-    <div class="container-fluid h-100">
-      <div class="row justify-content-center h-100">
-        <div class="col-md-8 col-xl-6 chat">
-          <div class="card">
-            <div class="card-header msg_head">
-              <div class="d-flex bd-highlight">
-                <div class="img_cont">
-                  <img
-                    src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png"
-                    class="rounded-circle user_img"
-                  />
-                  <span class="online_icon"></span>
+    <!-- Main chat container -->
+    <div id="chat-container" style="width: 97vw; height: 94vh; margin: 2vh auto; background: #fff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); padding: 0; font-size: 1.25rem; display: flex; align-items: center; justify-content: center;">
+        <div class="container-fluid h-100" style="height: 100%; width: 100%;">
+          <div class="row justify-content-center h-100" style="height: 100%;">
+            <div class="col-12 chat" style="height: 100%;">
+              <div class="card" style="height: 100%; width: 100%;">
+                <div class="card-header msg_head">
+                  <div class="d-flex bd-highlight">
+                    <div class="img_cont">
+                      <img
+                        src="https://media.licdn.com/dms/image/v2/D5603AQHLUd-B4GLN1w/profile-displayphoto-shrink_400_400/B56ZXOvWy4HEAg-/0/1742930276996?e=1757548800&v=beta&t=_6i51SNqHxaNmvHx-UW23Y5pG2o4T0UD2fvJhltWrys"
+                        class="rounded-circle user_img"
+                        style="width: 60px; height: 60px; object-fit: cover;"
+                      />
+                      <span class="online_icon"></span>
+                    </div>
+                    <div class="user_info">
+                      <span>Boom Bot</span>
+                      <p>Please upload a trial balance or financial statement.</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="user_info">
-                  <span>Working Capital Bot</span>
-                  <p>Please upload a trial balance or financial statement.</p>
+                <div id="messageFormeight" class="card-body msg_card_body"></div>
+                <div class="card-footer">
+                  <form id="messageArea" class="input-group">
+                    <input
+                      type="text"
+                      id="text"
+                      name="msg"
+                      placeholder="Type your message..."
+                      autocomplete="off"
+                      class="form-control type_msg"
+                      required
+                    />
+                    <input type="file" id="file" name="file" accept=".csv,.xls,.xlsx" style="display:none;">
+                    <div class="input-group-append">
+                      <button type="button" id="attach-btn" class="input-group-text" title="Attach file">📎</button>
+                      <span id="file-name" style="margin-left: 0.5em; color: #aaa; align-self: center;"></span>
+                      <button type="submit" id="send" class="input-group-text send_btn">
+                        <i class="fas fa-location-arrow"></i>
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
-            <div id="messageFormeight" class="card-body msg_card_body"></div>
-            <div class="card-footer">
-              <form id="messageArea" class="input-group">
-                <input
-                  type="text"
-                  id="text"
-                  name="msg"
-                  placeholder="Type your message..."
-                  autocomplete="off"
-                  class="form-control type_msg"
-                  required
-                />
-                <input type="file" id="file" name="file" accept=".csv,.xls,.xlsx" style="display:none;">
-                <div class="input-group-append">
-                  <button type="button" id="attach-btn" class="input-group-text" title="Attach file">📎</button>
-                  <span id="file-name" style="margin-left: 0.5em; color: #aaa; align-self: center;"></span>
-                  <button type="submit" id="send" class="input-group-text send_btn">
-                    <i class="fas fa-location-arrow"></i>
-                  </button>
-                </div>
-              </form>
-            </div>
           </div>
         </div>
-      </div>
     </div>
 
     <script>
