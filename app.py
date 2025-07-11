@@ -14,12 +14,12 @@ if hf_token is None:
 model_name = "mistralai/Mistral-7B-Instruct-v0.1"
 
 # tokenize and load the model
-tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=hf_token)
+tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.float16,
     device_map="auto",
-    use_auth_token=hf_token
+    token=hf_token
 )
 
 # create a text generation pipeline
