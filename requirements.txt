@@ -2,3 +2,4 @@ flask
 transformers
 accelerate
 torch
+pandas
