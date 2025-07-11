@@ -1,7 +1,7 @@
 # Boom-Bot
 Accepts financial statements and conducts analysis on working capital.
 
-Model: https://huggingface.co/microsoft/DialoGPT-medium
+Model: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.1
 
 To install Python: 
 https://www.python.org/downloads/
