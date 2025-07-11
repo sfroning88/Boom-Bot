@@ -2,7 +2,7 @@ import os
 
 from flask import Flask, render_template, request, jsonify
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 import torch
 
 # load in hugging face token
@@ -11,19 +11,19 @@ if hf_token is None:
     raise ValueError("Missing Hugging Face token. Set HUGGINGFACEHUB_API_TOKEN in your environment.")
 
 # free model good with numerical analysis
-model_name = "mistralai/Mistral-7B-Instruct-v0.1"
+model_name = "google/flan-t5-large"
 
-# tokenize and load the model
-tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype=torch.float16,
-    device_map="auto",
-    token=hf_token
-)
+# initialize the model and tokenizer
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # create a text generation pipeline
-pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
+pipe = pipeline(
+    "text2text-generation", 
+    model=model, 
+    tokenizer=tokenizer,
+    device=-1 # CPU
+)
 
 # create a Flask app
 app = Flask(__name__)
@@ -42,9 +42,8 @@ def chat():
 
 # function to get chat response
 def get_Chat_response(prompt):
-    formatted_prompt = f"""<s>[INST] {prompt.strip()} [/INST]"""
-    output = pipe(formatted_prompt, max_new_tokens=200, do_sample=True, temperature=0.7)
-    return output[0]['generated_text'].split("[/INST]")[-1].strip()
+    output = pipe(prompt, max_new_tokens=200)
+    return output[0]['generated_text'].strip()
     
 if __name__ == '__main__':
     app.run()
