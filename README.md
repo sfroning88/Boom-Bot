@@ -16,6 +16,9 @@ To authorize MacOs HuggingFace token:<br>
 echo 'export HUGGINGFACEHUB_API_TOKEN=hf_token_value' >> ~/.zshrc<br>
 source ~/.zshrc<br>
 
+To login to HuggingFace client on shell:<br>
+huggingface-cli login<br>
+
 To run the chat bot:<br>
 cd [your directory]<br>
 python3 app.py<br>
