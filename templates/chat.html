@@ -62,12 +62,11 @@
                   class="form-control type_msg"
                   required
                 />
+                <input type="file" id="file" name="file" accept=".csv,.xls,.xlsx" style="display:none;">
                 <div class="input-group-append">
-                  <button
-                    type="submit"
-                    id="send"
-                    class="input-group-text send_btn"
-                  >
+                  <button type="button" id="attach-btn" class="input-group-text" title="Attach file">📎</button>
+                  <span id="file-name" style="margin-left: 0.5em; color: #aaa; align-self: center;"></span>
+                  <button type="submit" id="send" class="input-group-text send_btn">
                     <i class="fas fa-location-arrow"></i>
                   </button>
                 </div>
@@ -85,44 +84,76 @@
       }
 
       $(document).ready(function () {
-        $("#messageArea").on("submit", function (event) {
+        $('#messageArea').on('submit', function (event) {
+          event.preventDefault();
           const date = new Date();
           const hour = date.getHours();
           const minute = date.getMinutes();
-          const str_time = hour + ":" + minute;
-          var rawText = $("#text").val();
-
+          const str_time = hour + ':' + minute;
+          var rawText = $('#text').val();
           var userHtml =
             '<div class="d-flex justify-content-end mb-4"><div class="msg_cotainer_send">' +
             rawText +
             '<span class="msg_time_send">' +
             str_time +
             '</span></div><div class="img_cont_msg"><img src="https://i.ibb.co/d5b84Xw/Untitled-design.png" class="rounded-circle user_img_msg"></div></div>';
-
-          $("#text").val("");
-          $("#messageFormeight").append(userHtml);
-
+          $('#text').val('');
+          $('#messageFormeight').append(userHtml);
           scrollToBottom();
 
+          // Prepare form data for message and file
+          var formData = new FormData();
+          formData.append('msg', rawText);
+          var fileInput = document.getElementById('file');
+          if (fileInput.files && fileInput.files[0]) {
+            formData.append('file', fileInput.files[0]);
+          }
+          // Clear file input and file name display after sending
+          fileInput.value = '';
+          document.getElementById('file-name').textContent = '';
+
           $.ajax({
-            data: {
-              msg: rawText,
+            url: '/chat_upload',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+              var botHtml =
+                '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                data +
+                '<span class="msg_time">' +
+                str_time +
+                '</span></div></div>';
+              $('#messageFormeight').append($.parseHTML(botHtml));
+              scrollToBottom();
             },
-            type: "POST",
-            url: "/get",
-          }).done(function (data) {
-            var botHtml =
-              '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
-              data +
-              '<span class="msg_time">' +
-              str_time +
-              "</span></div></div>";
-            $("#messageFormeight").append($.parseHTML(botHtml));
-            scrollToBottom();
+            error: function (xhr) {
+              var botHtml =
+                '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                'There was an error processing your request.' +
+                '<span class="msg_time">' +
+                str_time +
+                '</span></div></div>';
+              $('#messageFormeight').append($.parseHTML(botHtml));
+              scrollToBottom();
+            }
           });
-          event.preventDefault();
         });
       });
+
+      document.getElementById('attach-btn').onclick = function(e) {
+        e.preventDefault();
+        document.getElementById('file').click();
+      };
+      document.getElementById('file').onchange = function(e) {
+        const fileNameSpan = document.getElementById('file-name');
+        if (this.files && this.files[0]) {
+          fileNameSpan.textContent = this.files[0].name;
+        } else {
+          fileNameSpan.textContent = '';
+        }
+      };
     </script>
   </body>
 </html>
