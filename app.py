@@ -56,12 +56,8 @@ def get_Chat_response(prompt):
 # function to upload file    
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'error': 'No file part'}), 400
     file = request.files['file']
     filename = file.filename if file.filename is not None else ''
-    if filename == '':
-        return jsonify({'success': False, 'error': 'No selected file'}), 400
     if file and allowed_file(filename):
         safe_filename = secure_filename(filename)
         temp_dir = tempfile.gettempdir()
@@ -70,7 +66,7 @@ def upload_file():
         # process file code holder
         return jsonify({'success': True, 'filename': safe_filename}), 200
     else:
-        return jsonify({'success': False, 'error': 'Invalid file type'}), 400
+        return jsonify({'success': False, 'error': 'File upload failed'}), 400
 
 # function to load file in chat progress
 @app.route('/chat_upload', methods=['POST'])
