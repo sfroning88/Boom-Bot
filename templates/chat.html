@@ -110,7 +110,7 @@
           scrollToBottom();
 
           var thinkingHtml =
-            '<div id="thinking-bubble" class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer"><span id="thinking-text" style="font-style: italic; color: #888;">Thinking</span><span class="msg_time">' + str_time + '</span></div></div>';
+            '<div id="thinking-bubble" class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://media.licdn.com/dms/image/v2/D560BAQHK10HmqRh1rQ/company-logo_200_200/company-logo_200_200/0/1701815665068/wealthboom_logo?e=1755129600&v=beta&t=0RhPS_izHlCe2NRvKtO7mgT7LXo6T87muFlK-HR_noE" class="rounded-circle user_img_msg"></div><div class="msg_cotainer"><span id="thinking-text" style="font-style: italic; color: #888;">Thinking</span><span class="msg_time">' + str_time + '</span></div></div>';
           $('#messageFormeight').append($.parseHTML(thinkingHtml));
           scrollToBottom();
 
@@ -122,31 +122,31 @@
           }, 400);
 
           if (chatMode === 'initial') {
-            // Prepare form data for message and file
-            var formData = new FormData();
-            formData.append('msg', rawText);
-            var fileInput = document.getElementById('file');
-            if (fileInput.files && fileInput.files[0]) {
-              formData.append('file', fileInput.files[0]);
-            }
-            // Clear file input and file name display after sending
-            fileInput.value = '';
-            document.getElementById('file-name').textContent = '';
+          // Prepare form data for message and file
+          var formData = new FormData();
+          formData.append('msg', rawText);
+          var fileInput = document.getElementById('file');
+          if (fileInput.files && fileInput.files[0]) {
+            formData.append('file', fileInput.files[0]);
+          }
+          // Clear file input and file name display after sending
+          fileInput.value = '';
+          document.getElementById('file-name').textContent = '';
 
-            $.ajax({
-              url: '/chat_upload',
-              type: 'POST',
-              data: formData,
-              processData: false,
-              contentType: false,
-              success: function (data) {
+          $.ajax({
+            url: '/chat_upload',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (data) {
                 $('#thinking-bubble').remove();
                 if (thinkingInterval) {
                   clearInterval(thinkingInterval);
                   thinkingInterval = null;
                 }
                 var botHtml =
-                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://media.licdn.com/dms/image/v2/D560BAQHK10HmqRh1rQ/company-logo_200_200/company-logo_200_200/0/1701815665068/wealthboom_logo?e=1755129600&v=beta&t=0RhPS_izHlCe2NRvKtO7mgT7LXo6T87muFlK-HR_noE" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
                   data.analysis +
                   '<span class="msg_time">' +
                   str_time +
@@ -173,7 +173,7 @@
                   thinkingInterval = null;
                 }
                 var botHtml =
-                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://media.licdn.com/dms/image/v2/D560BAQHK10HmqRh1rQ/company-logo_200_200/company-logo_200_200/0/1701815665068/wealthboom_logo?e=1755129600&v=beta&t=0RhPS_izHlCe2NRvKtO7mgT7LXo6T87muFlK-HR_noE" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
                   'There was an error processing your request.' +
                   '<span class="msg_time">' +
                   str_time +
@@ -194,33 +194,33 @@
                   clearInterval(thinkingInterval);
                   thinkingInterval = null;
                 }
-                var botHtml =
-                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+              var botHtml =
+                '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://media.licdn.com/dms/image/v2/D560BAQHK10HmqRh1rQ/company-logo_200_200/company-logo_200_200/0/1701815665068/wealthboom_logo?e=1755129600&v=beta&t=0RhPS_izHlCe2NRvKtO7mgT7LXo6T87muFlK-HR_noE" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
                   data.response +
-                  '<span class="msg_time">' +
-                  str_time +
-                  '</span></div></div>';
-                $('#messageFormeight').append($.parseHTML(botHtml));
-                scrollToBottom();
+                '<span class="msg_time">' +
+                str_time +
+                '</span></div></div>';
+              $('#messageFormeight').append($.parseHTML(botHtml));
+              scrollToBottom();
                 // Optionally, update chatContext with the latest response for deeper context
                 chatContext += '\n' + rawText + '\n' + data.response;
-              },
-              error: function (xhr) {
+            },
+            error: function (xhr) {
                 $('#thinking-bubble').remove();
                 if (thinkingInterval) {
                   clearInterval(thinkingInterval);
                   thinkingInterval = null;
                 }
-                var botHtml =
-                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
-                  'There was an error processing your request.' +
-                  '<span class="msg_time">' +
-                  str_time +
-                  '</span></div></div>';
-                $('#messageFormeight').append($.parseHTML(botHtml));
-                scrollToBottom();
-              }
-            });
+              var botHtml =
+                '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://media.licdn.com/dms/image/v2/D560BAQHK10HmqRh1rQ/company-logo_200_200/company-logo_200_200/0/1701815665068/wealthboom_logo?e=1755129600&v=beta&t=0RhPS_izHlCe2NRvKtO7mgT7LXo6T87muFlK-HR_noE" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                'There was an error processing your request.' +
+                '<span class="msg_time">' +
+                str_time +
+                '</span></div></div>';
+              $('#messageFormeight').append($.parseHTML(botHtml));
+              scrollToBottom();
+            }
+          });
           }
         });
       });
@@ -241,3 +241,4 @@
     </script>
   </body>
 </html>
+
