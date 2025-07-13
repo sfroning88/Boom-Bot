@@ -60,19 +60,37 @@ def get_Chat_response(prompt):
 
 # function to summarize values
 def summarize_values(values):
+    import numpy as np
     if not values:
         return "no data"
-    flat = [item for sublist in values for item in sublist]
-    # Filter out non-finite values (NaN, inf, -inf)
-    flat = [x for x in flat if isinstance(x, (int, float)) and math.isfinite(x)]
+    flat = []
+    for sublist in values:
+        for item in sublist:
+            # Convert to string for parsing
+            s = str(item).strip()
+            if s in ('', '-', 'nan', 'NaN', 'None'):
+                continue
+            # Handle parentheses as negatives
+            if s.startswith('(') and s.endswith(')'):
+                try:
+                    num = -float(s[1:-1].replace(',', ''))
+                except Exception:
+                    continue
+            else:
+                try:
+                    num = float(s.replace(',', ''))
+                except Exception:
+                    continue
+            if math.isfinite(num):
+                flat.append(num)
     if not flat:
         return "no data"
     def usd(x):
         return f"${x:,.2f}"
     return (
-        f"min={usd(round(min(flat), 2))}, "
-        f"max={usd(round(max(flat), 2))}, "
-        f"mean={usd(round(sum(flat)/len(flat), 2))}"
+        f"min={usd(round(np.min(flat), 2))}, "
+        f"max={usd(round(np.max(flat), 2))}, "
+        f"mean={usd(round(np.mean(flat), 2))}"
     )
 
 # function to extract analysis from model output
@@ -122,21 +140,6 @@ def calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_tota
         'analysis': ' '.join(analysis)
     }
 
-# function to upload file    
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    file = request.files['file']
-    filename = file.filename if file.filename is not None else ''
-    if file and allowed_file(filename):
-        safe_filename = secure_filename(filename)
-        temp_dir = tempfile.gettempdir()
-        file_path = os.path.join(temp_dir, safe_filename)
-        file.save(file_path)
-        # process file code holder
-        return jsonify({'success': True, 'filename': safe_filename}), 200
-    else:
-        return jsonify({'success': False, 'error': 'File upload failed'}), 400
-
 # function to load file in chat progress
 @app.route('/chat_upload', methods=['POST'])
 def chat_upload():
@@ -146,6 +149,8 @@ def chat_upload():
     ap_values, ar_values, inv_values, revenue_values = [], [], [], []
     if file:
         filename = file.filename if file.filename is not None else ''
+        if not allowed_file(filename):
+            return jsonify({'success': False, 'error': 'Invalid file type. Please upload CSV or Excel files only.'}), 400
         safe_filename = secure_filename(filename)
         temp_dir = tempfile.gettempdir()
         file_path = os.path.join(temp_dir, safe_filename)
@@ -222,14 +227,13 @@ def chat_upload():
         ratios = calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_total)
         
         prompt = (
-            "Analyze these financial numbers and their percentages of revenue:\n"
+            "You are a financial analyst talking directly to a small business owner.\n"
             f"Revenue: {summarize_values(revenue_values)}\n"
-            f"Accounts Payable: {summarize_values(ap_values)} ({ratios['ap_ratio']:.1f}% of revenue)\n"
-            f"Accounts Receivable: {summarize_values(ar_values)} ({ratios['ar_ratio']:.1f}% of revenue)\n"
+            f"AP: {summarize_values(ap_values)} ({ratios['ap_ratio']:.1f}% of revenue)\n"
+            f"AR: {summarize_values(ar_values)} ({ratios['ar_ratio']:.1f}% of revenue)\n"
             f"Inventory: {summarize_values(inv_values)} ({ratios['inv_ratio']:.1f}% of revenue)\n"
             f"Working Capital Cycle: {ratios['working_capital_cycle']:.1f}%\n"
-            f"Quick Analysis: {ratios['analysis']}\n"
-            "Provide 2-3 specific recommendations for improving working capital efficiency based on these ratios."
+            "Write a 3 sentence analysis of the working capital trends including recommendations for improvement."
         )
         model_output = get_Chat_response(prompt)
         return extract_analysis(model_output, prompt)
