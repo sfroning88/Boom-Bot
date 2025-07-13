@@ -87,6 +87,9 @@
         messageBody.scrollTop = messageBody.scrollHeight;
       }
 
+      let chatMode = 'initial'; // 'initial' or 'followup'
+      let chatContext = '';
+
       $(document).ready(function () {
         $('#messageArea').on('submit', function (event) {
           event.preventDefault();
@@ -105,53 +108,92 @@
           $('#messageFormeight').append(userHtml);
           scrollToBottom();
 
-          // Prepare form data for message and file
-          var formData = new FormData();
-          formData.append('msg', rawText);
-          var fileInput = document.getElementById('file');
-          if (fileInput.files && fileInput.files[0]) {
-            formData.append('file', fileInput.files[0]);
-          }
-          // Clear file input and file name display after sending
-          fileInput.value = '';
-          document.getElementById('file-name').textContent = '';
-
-          $.ajax({
-            url: '/chat_upload',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (data) {
-              var botHtml =
-                '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
-                data.analysis +
-                '<span class="msg_time">' +
-                str_time +
-                '</span></div></div>';
-              $('#messageFormeight').append($.parseHTML(botHtml));
-              // If plot_path is present, show the image
-              if (data.plot_path) {
-                var imgHtml = '<div class="d-flex justify-content-start mb-4"><img src="' + data.plot_path + '" style="max-width: 100%; border-radius: 8px; margin: 10px 0;"></div>';
-                $('#messageFormeight').append($.parseHTML(imgHtml));
-              }
-              scrollToBottom();
-            },
-            error: function (xhr) {
-              var botHtml =
-                '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
-                'There was an error processing your request.' +
-                '<span class="msg_time">' +
-                str_time +
-                '</span></div></div>';
-              $('#messageFormeight').append($.parseHTML(botHtml));
-              scrollToBottom();
+          if (chatMode === 'initial') {
+            // Prepare form data for message and file
+            var formData = new FormData();
+            formData.append('msg', rawText);
+            var fileInput = document.getElementById('file');
+            if (fileInput.files && fileInput.files[0]) {
+              formData.append('file', fileInput.files[0]);
             }
-          });
+            // Clear file input and file name display after sending
+            fileInput.value = '';
+            document.getElementById('file-name').textContent = '';
+
+            $.ajax({
+              url: '/chat_upload',
+              type: 'POST',
+              data: formData,
+              processData: false,
+              contentType: false,
+              success: function (data) {
+                var botHtml =
+                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                  data.analysis +
+                  '<span class="msg_time">' +
+                  str_time +
+                  '</span></div></div>';
+                $('#messageFormeight').append($.parseHTML(botHtml));
+                // If plot_path is present, show the image
+                if (data.plot_path) {
+                  var imgHtml = '<div class="d-flex justify-content-start mb-4"><img src="' + data.plot_path + '" style="max-width: 100%; border-radius: 8px; margin: 10px 0;"></div>';
+                  $('#messageFormeight').append($.parseHTML(imgHtml));
+                }
+                scrollToBottom();
+                // Store context and switch to followup mode
+                chatContext = data.analysis;
+                chatMode = 'followup';
+                // Disable file input and attach button
+                $('#file').prop('disabled', true);
+                $('#attach-btn').prop('disabled', true).css('opacity', 0.5);
+                $('#file-name').text('');
+              },
+              error: function (xhr) {
+                var botHtml =
+                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                  'There was an error processing your request.' +
+                  '<span class="msg_time">' +
+                  str_time +
+                  '</span></div></div>';
+                $('#messageFormeight').append($.parseHTML(botHtml));
+                scrollToBottom();
+              }
+            });
+          } else if (chatMode === 'followup') {
+            // Follow-up: only send text and context
+            $.ajax({
+              url: '/chat_followup',
+              type: 'POST',
+              data: { msg: rawText, context: chatContext },
+              success: function (data) {
+                var botHtml =
+                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                  data.response +
+                  '<span class="msg_time">' +
+                  str_time +
+                  '</span></div></div>';
+                $('#messageFormeight').append($.parseHTML(botHtml));
+                scrollToBottom();
+                // Optionally, update chatContext with the latest response for deeper context
+                chatContext += '\n' + rawText + '\n' + data.response;
+              },
+              error: function (xhr) {
+                var botHtml =
+                  '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
+                  'There was an error processing your request.' +
+                  '<span class="msg_time">' +
+                  str_time +
+                  '</span></div></div>';
+                $('#messageFormeight').append($.parseHTML(botHtml));
+                scrollToBottom();
+              }
+            });
+          }
         });
       });
 
       document.getElementById('attach-btn').onclick = function(e) {
+        if ($('#file').prop('disabled')) return false;
         e.preventDefault();
         document.getElementById('file').click();
       };
