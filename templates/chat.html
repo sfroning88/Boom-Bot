@@ -125,11 +125,16 @@
             success: function (data) {
               var botHtml =
                 '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
-                data +
+                data.analysis +
                 '<span class="msg_time">' +
                 str_time +
                 '</span></div></div>';
               $('#messageFormeight').append($.parseHTML(botHtml));
+              // If plot_path is present, show the image
+              if (data.plot_path) {
+                var imgHtml = '<div class="d-flex justify-content-start mb-4"><img src="' + data.plot_path + '" style="max-width: 100%; border-radius: 8px; margin: 10px 0;"></div>';
+                $('#messageFormeight').append($.parseHTML(imgHtml));
+              }
               scrollToBottom();
             },
             error: function (xhr) {
