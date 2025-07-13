@@ -4,3 +4,5 @@ accelerate
 torch
 pandas
 openpyxl
+matplotlib
+numpy
