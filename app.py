@@ -82,6 +82,46 @@ def extract_analysis(model_output, prompt):
     # Return more of the response and preserve formatting
     return model_output.strip()
 
+# function to calculate working capital ratios and trends
+def calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_total):
+    """Calculate working capital ratios and provide trend analysis"""
+    if revenue_total <= 0:
+        return {
+            'ar_ratio': 0,
+            'ap_ratio': 0,
+            'inv_ratio': 0,
+            'working_capital_cycle': 0,
+            'analysis': "No revenue data available for ratio calculations."
+        }
+    
+    ar_ratio = (ar_total / revenue_total) * 100
+    ap_ratio = (ap_total / revenue_total) * 100
+    inv_ratio = (inv_total / revenue_total) * 100
+    
+    # Basic working capital efficiency indicators
+    working_capital_cycle = ar_ratio + inv_ratio - ap_ratio
+    
+    analysis = []
+    if ar_ratio > 20:
+        analysis.append(f"High AR ratio ({ar_ratio:.1f}%) suggests potential collection issues.")
+    if ap_ratio > 15:
+        analysis.append(f"High AP ratio ({ap_ratio:.1f}%) may indicate cash flow pressure.")
+    if inv_ratio > 25:
+        analysis.append(f"High inventory ratio ({inv_ratio:.1f}%) suggests potential overstocking.")
+    if working_capital_cycle > 30:
+        analysis.append(f"Long working capital cycle ({working_capital_cycle:.1f}%) indicates cash tied up in operations.")
+    
+    if not analysis:
+        analysis.append("Working capital ratios appear healthy.")
+    
+    return {
+        'ar_ratio': ar_ratio,
+        'ap_ratio': ap_ratio,
+        'inv_ratio': inv_ratio,
+        'working_capital_cycle': working_capital_cycle,
+        'analysis': ' '.join(analysis)
+    }
+
 # function to upload file    
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -102,8 +142,8 @@ def upload_file():
 def chat_upload():
     msg = request.form.get('msg', '')
     file = request.files.get('file')
-    ap_rows, ar_rows, inv_rows = [], [], []
-    ap_values, ar_values, inv_values = [], [], []
+    ap_rows, ar_rows, inv_rows, revenue_rows = [], [], [], []
+    ap_values, ar_values, inv_values, revenue_values = [], [], [], []
     if file:
         filename = file.filename if file.filename is not None else ''
         safe_filename = secure_filename(filename)
@@ -146,6 +186,19 @@ def chat_upload():
                 re.search(r'finished goods', row_str_nopunct)
             ):
                 inv_rows.append(row)
+            # Revenue matching
+            if (
+                re.search(r'revenue', row_str_nopunct) or
+                re.search(r'sales', row_str_nopunct) or
+                re.search(r'income', row_str_nopunct) or
+                re.search(r'gross revenue', row_str_nopunct) or
+                re.search(r'net revenue', row_str_nopunct) or
+                re.search(r'total revenue', row_str_nopunct) or
+                re.search(r'turnover', row_str_nopunct)
+            ):
+                revenue_rows.append(row)
+        
+        # Extract numerical values
         if ap_rows:
             ap_df = pd.DataFrame(ap_rows)
             ap_values = ap_df.select_dtypes(include=['number']).values.tolist()
@@ -155,13 +208,28 @@ def chat_upload():
         if inv_rows:
             inv_df = pd.DataFrame(inv_rows)
             inv_values = inv_df.select_dtypes(include=['number']).values.tolist()
+        if revenue_rows:
+            revenue_df = pd.DataFrame(revenue_rows)
+            revenue_values = revenue_df.select_dtypes(include=['number']).values.tolist()
+        
+        # Calculate percentages of revenue and working capital ratios
+        revenue_total = sum([sum(sublist) for sublist in revenue_values]) if revenue_values else 0
+        ap_total = sum([sum(sublist) for sublist in ap_values]) if ap_values else 0
+        ar_total = sum([sum(sublist) for sublist in ar_values]) if ar_values else 0
+        inv_total = sum([sum(sublist) for sublist in inv_values]) if inv_values else 0
+        
+        # Get working capital analysis
+        ratios = calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_total)
+        
         prompt = (
-            "Analyze these financial numbers:\n"
-            f"Accounts Payable: {summarize_values(ap_values)}\n"
-            f"Accounts Receivable: {summarize_values(ar_values)}\n"
-            f"Inventory: {summarize_values(inv_values)}\n"
-            "For each financial number, provide one sentence of analysis (trends and patterns).\n"
-            "Insert a newline between each financial number and its analysis."
+            "Analyze these financial numbers and their percentages of revenue:\n"
+            f"Revenue: {summarize_values(revenue_values)}\n"
+            f"Accounts Payable: {summarize_values(ap_values)} ({ratios['ap_ratio']:.1f}% of revenue)\n"
+            f"Accounts Receivable: {summarize_values(ar_values)} ({ratios['ar_ratio']:.1f}% of revenue)\n"
+            f"Inventory: {summarize_values(inv_values)} ({ratios['inv_ratio']:.1f}% of revenue)\n"
+            f"Working Capital Cycle: {ratios['working_capital_cycle']:.1f}%\n"
+            f"Quick Analysis: {ratios['analysis']}\n"
+            "Provide 2-3 specific recommendations for improving working capital efficiency based on these ratios."
         )
         model_output = get_Chat_response(prompt)
         return extract_analysis(model_output, prompt)
