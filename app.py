@@ -12,6 +12,9 @@ from werkzeug.utils import secure_filename
 import tempfile
 import pandas as pd
 
+import matplotlib
+matplotlib.use('Agg')
+
 ALLOWED_EXTENSIONS = {'csv', 'xls', 'xlsx'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -140,6 +143,36 @@ def calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_tota
         'analysis': ' '.join(analysis)
     }
 
+def plot_financial_data(ap_values, ar_values, inv_values, revenue_values, periods=None, save_path="static/financial_plot.png"):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    def flatten(vals):
+        return [item for sublist in vals for item in sublist] if vals and isinstance(vals[0], list) else vals or []
+    ap = flatten(ap_values)
+    ar = flatten(ar_values)
+    inv = flatten(inv_values)
+    rev = flatten(revenue_values)
+    n = max(len(ap), len(ar), len(inv), len(rev))
+    if not periods:
+        periods = [f"Period {i+1}" for i in range(n)]
+    def pad(lst):
+        return lst + [np.nan] * (n - len(lst))
+    ap, ar, inv, rev = map(pad, [ap, ar, inv, rev])
+    plt.figure(figsize=(10, 6))
+    plt.plot(periods, ap, marker='o', label='Accounts Payable')
+    plt.plot(periods, ar, marker='o', label='Accounts Receivable')
+    plt.plot(periods, inv, marker='o', label='Inventory')
+    plt.plot(periods, rev, marker='o', label='Revenue')
+    plt.xlabel('Period')
+    plt.ylabel('Amount')
+    plt.title('Working Capital Line Items Over Time')
+    plt.legend()
+    plt.tight_layout()
+    plt.xticks(rotation=45)
+    plt.savefig(save_path)
+    plt.close()
+    return save_path
+
 # function to load file in chat progress
 @app.route('/chat_upload', methods=['POST'])
 def chat_upload():
@@ -161,9 +194,7 @@ def chat_upload():
             df = pd.read_excel(file_path)
         for idx, row in df.iterrows():
             row_str = ' '.join([str(x).lower() for x in row.astype(str)])
-            # Normalize for matching
             row_str_nopunct = re.sub(r'[^a-z0-9 ]', ' ', row_str)
-            # Accounts Receivable matching
             if (
                 re.search(r'accounts receivable', row_str_nopunct) or
                 re.search(r'\ba r\b', row_str_nopunct) or
@@ -173,7 +204,6 @@ def chat_upload():
                 re.search(r'receivable', row_str_nopunct)
             ):
                 ar_rows.append(row)
-            # Accounts Payable matching
             if (
                 re.search(r'accounts payable', row_str_nopunct) or
                 re.search(r'\ba p\b', row_str_nopunct) or
@@ -183,7 +213,6 @@ def chat_upload():
                 re.search(r'payable', row_str_nopunct)
             ):
                 ap_rows.append(row)
-            # Inventory matching
             if (
                 re.search(r'inventory', row_str_nopunct) or
                 re.search(r'stock', row_str_nopunct) or
@@ -191,7 +220,6 @@ def chat_upload():
                 re.search(r'finished goods', row_str_nopunct)
             ):
                 inv_rows.append(row)
-            # Revenue matching
             if (
                 re.search(r'revenue', row_str_nopunct) or
                 re.search(r'sales', row_str_nopunct) or
@@ -202,8 +230,6 @@ def chat_upload():
                 re.search(r'turnover', row_str_nopunct)
             ):
                 revenue_rows.append(row)
-        
-        # Extract numerical values
         if ap_rows:
             ap_df = pd.DataFrame(ap_rows)
             ap_values = ap_df.select_dtypes(include=['number']).values.tolist()
@@ -216,16 +242,11 @@ def chat_upload():
         if revenue_rows:
             revenue_df = pd.DataFrame(revenue_rows)
             revenue_values = revenue_df.select_dtypes(include=['number']).values.tolist()
-        
-        # Calculate percentages of revenue and working capital ratios
         revenue_total = sum([sum(sublist) for sublist in revenue_values]) if revenue_values else 0
         ap_total = sum([sum(sublist) for sublist in ap_values]) if ap_values else 0
         ar_total = sum([sum(sublist) for sublist in ar_values]) if ar_values else 0
         inv_total = sum([sum(sublist) for sublist in inv_values]) if inv_values else 0
-        
-        # Get working capital analysis
         ratios = calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_total)
-        
         prompt = (
             "You are a financial analyst talking directly to a small business owner.\n"
             f"Revenue: {summarize_values(revenue_values)}\n"
@@ -236,7 +257,10 @@ def chat_upload():
             "Write a 3 sentence analysis of the working capital trends including recommendations for improvement."
         )
         model_output = get_Chat_response(prompt)
-        return extract_analysis(model_output, prompt)
+        analysis = extract_analysis(model_output, prompt)
+        # Generate and save the plot
+        plot_path = plot_financial_data(ap_values, ar_values, inv_values, revenue_values)
+        return jsonify({'success': True, 'analysis': analysis, 'plot_path': plot_path}), 200
     return get_Chat_response(msg)
 
 if __name__ == '__main__':
