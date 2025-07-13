@@ -89,10 +89,12 @@ def chat_upload():
         inv_ratios = [nwc[p][6] for p in periods]
         wc_cycles = [nwc[p][7] for p in periods]
         prompt = (
-            "You are a financial analyst. You are given a dictionary called nwc, where each key is a period (e.g., '2022') and each value is a list: [ar, ap, inv, rev, ar_ratio, ap_ratio, inv_ratio, working_capital_cycle].\n"
-            "ar = accounts receivable, ap = accounts payable, inv = inventory, rev = revenue. The ratios are each as a percent of revenue.\n"
-            f"nwc = {nwc}\n"
-            "Analyze the trends in AP, AR, and Inventory as a % of revenue over time, and provide concise, practical recommendations for improving working capital. Do not list or summarize the raw numbers."
+            "You are a financial analyst. Analyze this working capital data and provide exactly 3 concise sentences:\n"
+            "1. One sentence on AR trends as % of revenue\n"
+            "2. One sentence on AP and Inventory trends as % of revenue\n" 
+            "3. One sentence with practical recommendations\n"
+            f"Data: {nwc}\n"
+            "Do not generate code, lists, or raw numbers. Focus only on trends and actionable insights."
         )
         model_output = get_Chat_response(prompt)
         analysis = extract_analysis(model_output, prompt)
