@@ -263,5 +263,18 @@ def chat_upload():
         return jsonify({'success': True, 'analysis': analysis, 'plot_path': plot_path}), 200
     return get_Chat_response(msg)
 
+@app.route('/chat_followup', methods=['POST'])
+def chat_followup():
+    msg = request.form.get('msg', '')
+    context = request.form.get('context', '')
+    # Compose a prompt that includes the previous analysis/context and the new user question
+    prompt = (
+        f"Previous analysis: {context}\n"
+        f"User follow-up question: {msg}\n"
+        "As a financial analyst, answer the user's follow-up question in a concise, practical way, referencing the previous analysis if relevant."
+    )
+    ai_response = get_Chat_response(prompt)
+    return jsonify({'success': True, 'response': ai_response}), 200
+
 if __name__ == '__main__':
     app.run()
