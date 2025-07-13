@@ -1,6 +1,7 @@
 import os
 import math
 import re
+from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify
 
@@ -66,26 +67,37 @@ def summarize_values(values):
     import numpy as np
     if not values:
         return "no data"
-    flat = []
-    for sublist in values:
-        for item in sublist:
-            # Convert to string for parsing
-            s = str(item).strip()
-            if s in ('', '-', 'nan', 'NaN', 'None'):
-                continue
-            # Handle parentheses as negatives
-            if s.startswith('(') and s.endswith(')'):
-                try:
-                    num = -float(s[1:-1].replace(',', ''))
-                except Exception:
+    
+    # Handle both nested lists and simple lists
+    if values and isinstance(values[0], list):
+        # Old format: nested lists
+        flat = []
+        for sublist in values:
+            for item in sublist:
+                # Convert to string for parsing
+                s = str(item).strip()
+                if s in ('', '-', 'nan', 'NaN', 'None'):
                     continue
-            else:
-                try:
-                    num = float(s.replace(',', ''))
-                except Exception:
-                    continue
-            if math.isfinite(num):
-                flat.append(num)
+                # Handle parentheses as negatives
+                if s.startswith('(') and s.endswith(')'):
+                    try:
+                        num = -float(s[1:-1].replace(',', ''))
+                    except Exception:
+                        continue
+                else:
+                    try:
+                        num = float(s.replace(',', ''))
+                    except Exception:
+                        continue
+                if math.isfinite(num):
+                    flat.append(num)
+    else:
+        # New format: simple list of numbers
+        flat = []
+        for item in values:
+            if isinstance(item, (int, float)) and math.isfinite(item):
+                flat.append(item)
+    
     if not flat:
         return "no data"
     def usd(x):
@@ -143,32 +155,188 @@ def calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_tota
         'analysis': ' '.join(analysis)
     }
 
+def extract_periods_from_headers(df, max_scan_rows=10):
+    """
+    Extract period headers by collecting all date-like cells in the first header row with dates.
+    Removes duplicates and preserves order.
+    """
+    periods = []
+    header_row_idx = -1
+    
+    # Look for period headers in the first few rows only
+    for row_idx in range(min(max_scan_rows, len(df))):
+        row = df.iloc[row_idx]
+        found_dates = []
+        for col_idx, cell_value in enumerate(row):
+            cell_str = str(cell_value).strip()
+            if not cell_str or cell_str.lower() in ['nan', 'none', '']:
+                continue
+            if is_date_cell(cell_str):
+                period_label = extract_period_label(cell_str)
+                if period_label:
+                    found_dates.append(period_label)
+        if len(found_dates) >= 2:
+            # Remove duplicates while preserving order
+            seen = set()
+            periods = [x for x in found_dates if not (x in seen or seen.add(x))]
+            header_row_idx = row_idx
+            break
+    
+    # If no timeline found, try to infer from column headers
+    if not periods and len(df.columns) > 1:
+        for col in df.columns:
+            col_str = str(col).strip()
+            if is_date_cell(col_str):
+                period_label = extract_period_label(col_str)
+                if period_label and period_label not in periods:
+                    periods.append(period_label)
+    
+    # If still no periods found, create generic periods based on columns
+    if not periods:
+        num_cols = len(df.columns)
+        estimated_periods = min(5, num_cols)  # Conservative estimate
+        periods = [f"Period {i+1}" for i in range(estimated_periods)]
+        header_row_idx = 0
+    
+    # Limit periods to a reasonable number
+    if len(periods) > 24:
+        periods = periods[:24]
+    
+    return periods, header_row_idx + 1
+
+def is_date_cell(cell_str):
+    """Check if a cell contains a date in various formats."""
+    # Skip cells that look like data (decimal numbers)
+    if re.search(r'^\d+\.\d+$', cell_str):
+        return False
+        
+    date_patterns = [
+        r'\b(20\d{2})\b',  # Years like 2023, 2024
+        r'\bFY\s*(20\d{2})\b',  # FY 2023
+        r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(20\d{2})\b',  # Jan 2023
+        r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s*(20\d{2})\b',  # January 2023
+        r'\bQ[1-4]\s*(20\d{2})\b',  # Q1 2023
+        r'\bQ[1-4]\s*FY\s*(20\d{2})\b',  # Q1 FY 2023
+        r'\b(20\d{2})[-/](20\d{2})\b',  # 2023-2024
+        r'\b(20\d{2})[/-](0?[1-9]|1[0-2])\b',  # 2023/01 or 2023-01
+        r'\b(0?[1-9]|1[0-2])[/-](20\d{2})\b',  # 01/2023 or 1/2023
+        r'\b(0?[1-9]|[12]\d|3[01])[/-](0?[1-9]|1[0-2])[/-](20\d{2})\b',  # MM/DD/YYYY
+        r'\b(0?[1-9]|[12]\d|3[01])[/-](0?[1-9]|1[0-2])[/-](20\d{2})\b',  # DD/MM/YYYY
+    ]
+    
+    for pattern in date_patterns:
+        if re.search(pattern, cell_str, re.IGNORECASE):
+            return True
+    return False
+
+def extract_timeline_from_row(row, start_col_idx):
+    """
+    Extract a continuous timeline of dates starting from start_col_idx.
+    Returns a list of period labels.
+    """
+    timeline = []
+    
+    # Look forward from the start column
+    for col_idx in range(start_col_idx, len(row)):
+        cell_value = row.iloc[col_idx]
+        cell_str = str(cell_value).strip()
+        
+        # Skip empty cells
+        if not cell_str or cell_str.lower() in ['nan', 'none', '']:
+            continue
+            
+        # Check if this cell contains a date
+        if is_date_cell(cell_str):
+            # Extract and clean the date
+            period_label = extract_period_label(cell_str)
+            if period_label:
+                timeline.append(period_label)
+        else:
+            # If we hit a non-date cell, stop the timeline
+            break
+    
+    return timeline
+
+def extract_period_label(cell_str):
+    """
+    Extract a clean period label from a date cell.
+    """
+    # Try to extract year first
+    year_match = re.search(r'\b(20\d{2})\b', cell_str)
+    if year_match:
+        year = year_match.group(1)
+        
+        # Check for month patterns
+        month_patterns = {
+            r'\bJan[a-z]*\b': 'Jan', r'\bFeb[a-z]*\b': 'Feb', r'\bMar[a-z]*\b': 'Mar',
+            r'\bApr[a-z]*\b': 'Apr', r'\bMay[a-z]*\b': 'May', r'\bJun[a-z]*\b': 'Jun',
+            r'\bJul[a-z]*\b': 'Jul', r'\bAug[a-z]*\b': 'Aug', r'\bSep[a-z]*\b': 'Sep',
+            r'\bOct[a-z]*\b': 'Oct', r'\bNov[a-z]*\b': 'Nov', r'\bDec[a-z]*\b': 'Dec'
+        }
+        
+        for pattern, month in month_patterns.items():
+            if re.search(pattern, cell_str, re.IGNORECASE):
+                return f"{month} {year}"
+        
+        # Check for quarter patterns
+        quarter_match = re.search(r'\bQ([1-4])\b', cell_str, re.IGNORECASE)
+        if quarter_match:
+            quarter = quarter_match.group(1)
+            return f"Q{quarter} {year}"
+        
+        # Check for FY pattern
+        if re.search(r'\bFY\b', cell_str, re.IGNORECASE):
+            return f"FY {year}"
+        
+        # Just return the year
+        return year
+    
+    # If no year found, try to extract any meaningful date pattern
+    if re.search(r'\b(0?[1-9]|1[0-2])[/-](0?[1-9]|[12]\d|3[01])[/-](20\d{2})\b', cell_str):
+        # MM/DD/YYYY format
+        match = re.search(r'\b(0?[1-9]|1[0-2])[/-](0?[1-9]|[12]\d|3[01])[/-](20\d{2})\b', cell_str)
+        if match:
+            month, day, year = match.groups()
+            return f"{month}/{year}"
+    
+    return cell_str.strip()  # Return the original string if no pattern matches
+
 def plot_financial_data(ap_values, ar_values, inv_values, revenue_values, periods=None, save_path="static/financial_plot.png"):
     import matplotlib.pyplot as plt
     import numpy as np
-    def flatten(vals):
-        return [item for sublist in vals for item in sublist] if vals and isinstance(vals[0], list) else vals or []
-    ap = flatten(ap_values)
-    ar = flatten(ar_values)
-    inv = flatten(inv_values)
-    rev = flatten(revenue_values)
-    n = max(len(ap), len(ar), len(inv), len(rev))
+    
+    # Ensure we have matching lengths
+    n = max(len(ap_values), len(ar_values), len(inv_values), len(revenue_values))
     if not periods:
         periods = [f"Period {i+1}" for i in range(n)]
+    
+    # Truncate periods if we have more periods than data points
+    if len(periods) > n:
+        periods = periods[:n]
+    # Extend periods if we have more data points than periods
+    elif len(periods) < n:
+        periods.extend([f"Period {i+1}" for i in range(len(periods), n)])
+    
+    # Pad arrays to match length
     def pad(lst):
-        return lst + [np.nan] * (n - len(lst))
-    ap, ar, inv, rev = map(pad, [ap, ar, inv, rev])
+        return lst + [0] * (n - len(lst))
+    ap, ar, inv, rev = map(pad, [ap_values, ar_values, inv_values, revenue_values])
+    
+    # Create numeric x-axis positions
+    x_positions = np.arange(len(periods))
+    
     plt.figure(figsize=(10, 6))
-    plt.plot(periods, ap, marker='o', label='Accounts Payable')
-    plt.plot(periods, ar, marker='o', label='Accounts Receivable')
-    plt.plot(periods, inv, marker='o', label='Inventory')
-    plt.plot(periods, rev, marker='o', label='Revenue')
+    plt.plot(x_positions, ap, marker='o', label='Accounts Payable')
+    plt.plot(x_positions, ar, marker='o', label='Accounts Receivable')
+    plt.plot(x_positions, inv, marker='o', label='Inventory')
+    plt.plot(x_positions, rev, marker='o', label='Revenue')
     plt.xlabel('Period')
     plt.ylabel('Amount')
     plt.title('Working Capital Line Items Over Time')
     plt.legend()
     plt.tight_layout()
-    plt.xticks(rotation=45)
+    # Set x-axis ticks to show period labels
+    plt.xticks(x_positions, periods, rotation=45)
     plt.savefig(save_path)
     plt.close()
     return save_path
@@ -192,9 +360,30 @@ def chat_upload():
             df = pd.read_csv(file_path)
         else:
             df = pd.read_excel(file_path)
-        for idx, row in df.iterrows():
+        
+        # Extract periods and determine header rows
+        periods, header_rows = extract_periods_from_headers(df)
+        
+        # Skip header rows when processing data
+        data_df = df.iloc[header_rows:].reset_index(drop=True)
+        
+        # Limit data processing to match the number of periods
+        # Most financial statements have data rows corresponding to the periods
+        max_data_rows = len(periods) * 2  # Allow some flexibility for multiple line items per period
+        data_df = data_df.head(max_data_rows)
+        
+        # Initialize arrays to store one value per period
+        ap_values = [0] * len(periods)
+        ar_values = [0] * len(periods)
+        inv_values = [0] * len(periods)
+        revenue_values = [0] * len(periods)
+        
+        for idx, row in data_df.iterrows():
             row_str = ' '.join([str(x).lower() for x in row.astype(str)])
             row_str_nopunct = re.sub(r'[^a-z0-9 ]', ' ', row_str)
+            
+            # Determine which financial category this row represents
+            category = None
             if (
                 re.search(r'accounts receivable', row_str_nopunct) or
                 re.search(r'\ba r\b', row_str_nopunct) or
@@ -203,8 +392,8 @@ def chat_upload():
                 re.search(r'\ba r\b', row_str.replace('/', '')) or
                 re.search(r'receivable', row_str_nopunct)
             ):
-                ar_rows.append(row)
-            if (
+                category = 'ar'
+            elif (
                 re.search(r'accounts payable', row_str_nopunct) or
                 re.search(r'\ba p\b', row_str_nopunct) or
                 re.search(r'\bap\b', row_str_nopunct) or
@@ -212,15 +401,15 @@ def chat_upload():
                 re.search(r'\ba p\b', row_str.replace('/', '')) or
                 re.search(r'payable', row_str_nopunct)
             ):
-                ap_rows.append(row)
-            if (
+                category = 'ap'
+            elif (
                 re.search(r'inventory', row_str_nopunct) or
                 re.search(r'stock', row_str_nopunct) or
                 re.search(r'raw materials', row_str_nopunct) or
                 re.search(r'finished goods', row_str_nopunct)
             ):
-                inv_rows.append(row)
-            if (
+                category = 'inv'
+            elif (
                 re.search(r'revenue', row_str_nopunct) or
                 re.search(r'sales', row_str_nopunct) or
                 re.search(r'income', row_str_nopunct) or
@@ -229,26 +418,46 @@ def chat_upload():
                 re.search(r'total revenue', row_str_nopunct) or
                 re.search(r'turnover', row_str_nopunct)
             ):
-                revenue_rows.append(row)
-        if ap_rows:
-            ap_df = pd.DataFrame(ap_rows)
-            ap_values = ap_df.select_dtypes(include=['number']).values.tolist()
-        if ar_rows:
-            ar_df = pd.DataFrame(ar_rows)
-            ar_values = ar_df.select_dtypes(include=['number']).values.tolist()
-        if inv_rows:
-            inv_df = pd.DataFrame(inv_rows)
-            inv_values = inv_df.select_dtypes(include=['number']).values.tolist()
-        if revenue_rows:
-            revenue_df = pd.DataFrame(revenue_rows)
-            revenue_values = revenue_df.select_dtypes(include=['number']).values.tolist()
-        revenue_total = sum([sum(sublist) for sublist in revenue_values]) if revenue_values else 0
-        ap_total = sum([sum(sublist) for sublist in ap_values]) if ap_values else 0
-        ar_total = sum([sum(sublist) for sublist in ar_values]) if ar_values else 0
-        inv_total = sum([sum(sublist) for sublist in inv_values]) if inv_values else 0
+                category = 'rev'
+            
+            # If we found a category, extract the values for each period
+            if category:
+                # Get numeric values from the row (skip the first few columns which are usually labels)
+                numeric_values = []
+                for col_idx in range(2, min(len(row), len(periods) + 2)):  # Start from col 2, limit to number of periods
+                    try:
+                        val = float(row.iloc[col_idx])
+                        if math.isfinite(val):
+                            numeric_values.append(val)
+                        else:
+                            numeric_values.append(0)
+                    except (ValueError, TypeError):
+                        numeric_values.append(0)
+                
+                # Pad or truncate to match number of periods
+                while len(numeric_values) < len(periods):
+                    numeric_values.append(0)
+                numeric_values = numeric_values[:len(periods)]
+                
+                # Add to the appropriate category
+                if category == 'ar':
+                    ar_values = [ar_values[i] + numeric_values[i] for i in range(len(periods))]
+                elif category == 'ap':
+                    ap_values = [ap_values[i] + numeric_values[i] for i in range(len(periods))]
+                elif category == 'inv':
+                    inv_values = [inv_values[i] + numeric_values[i] for i in range(len(periods))]
+                elif category == 'rev':
+                    revenue_values = [revenue_values[i] + numeric_values[i] for i in range(len(periods))]
+        
+        # Calculate totals for ratios
+        revenue_total = sum(revenue_values) if revenue_values else 0
+        ap_total = sum(ap_values) if ap_values else 0
+        ar_total = sum(ar_values) if ar_values else 0
+        inv_total = sum(inv_values) if inv_values else 0
         ratios = calculate_working_capital_ratios(ar_total, ap_total, inv_total, revenue_total)
         prompt = (
             "You are a financial analyst talking directly to a small business owner.\n"
+            f"Time periods: {', '.join(periods)}\n"
             f"Revenue: {summarize_values(revenue_values)}\n"
             f"AP: {summarize_values(ap_values)} ({ratios['ap_ratio']:.1f}% of revenue)\n"
             f"AR: {summarize_values(ar_values)} ({ratios['ar_ratio']:.1f}% of revenue)\n"
@@ -258,8 +467,8 @@ def chat_upload():
         )
         model_output = get_Chat_response(prompt)
         analysis = extract_analysis(model_output, prompt)
-        # Generate and save the plot
-        plot_path = plot_financial_data(ap_values, ar_values, inv_values, revenue_values)
+        # Generate and save the plot with extracted periods
+        plot_path = plot_financial_data(ap_values, ar_values, inv_values, revenue_values, periods)
         return jsonify({'success': True, 'analysis': analysis, 'plot_path': plot_path}), 200
     return get_Chat_response(msg)
 
