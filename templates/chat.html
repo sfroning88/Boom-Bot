@@ -108,6 +108,11 @@
           $('#messageFormeight').append(userHtml);
           scrollToBottom();
 
+          var thinkingHtml =
+            '<div id="thinking-bubble" class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">Thinking...<span class="msg_time">' + str_time + '</span></div></div>';
+          $('#messageFormeight').append($.parseHTML(thinkingHtml));
+          scrollToBottom();
+
           if (chatMode === 'initial') {
             // Prepare form data for message and file
             var formData = new FormData();
@@ -127,6 +132,7 @@
               processData: false,
               contentType: false,
               success: function (data) {
+                $('#thinking-bubble').remove();
                 var botHtml =
                   '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
                   data.analysis +
@@ -149,6 +155,7 @@
                 $('#file-name').text('');
               },
               error: function (xhr) {
+                $('#thinking-bubble').remove();
                 var botHtml =
                   '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
                   'There was an error processing your request.' +
@@ -166,6 +173,7 @@
               type: 'POST',
               data: { msg: rawText, context: chatContext },
               success: function (data) {
+                $('#thinking-bubble').remove();
                 var botHtml =
                   '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
                   data.response +
@@ -178,6 +186,7 @@
                 chatContext += '\n' + rawText + '\n' + data.response;
               },
               error: function (xhr) {
+                $('#thinking-bubble').remove();
                 var botHtml =
                   '<div class="d-flex justify-content-start mb-4"><div class="img_cont_msg"><img src="https://i.ibb.co/fSNP7Rz/icons8-chatgpt-512.png" class="rounded-circle user_img_msg"></div><div class="msg_cotainer">' +
                   'There was an error processing your request.' +
