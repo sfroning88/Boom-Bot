@@ -84,11 +84,17 @@ def process_file(file):
             found_indices = []
             for col_idx, cell_value in enumerate(row):
                 cell_str = str(cell_value).strip().lower()
+                # Skip if cell is empty, nan, or numeric
                 if not cell_str or cell_str in ['nan', 'none', '']:
                     continue
+                try:
+                    # If cell is a number, skip
+                    float(cell_str.replace(',', ''))
+                    continue
+                except ValueError:
+                    pass
                 # Special case: if 'debit' or 'credit' in cell, treat as a period but mark for reconciliation
                 if 'debit' in cell_str or 'credit' in cell_str:
-                    # Remove 'debit'/'credit' for period label
                     period_label = re.sub(r'\s*(debit|credit)\s*', '', cell_str, flags=re.IGNORECASE).strip()
                     found_dates.append(period_label)
                     found_indices.append(col_idx)
@@ -194,33 +200,36 @@ def process_file(file):
     for idx, row in data_df.iterrows():
         row_str = ' '.join([str(x).lower() for x in row.astype(str)])
         row_str_nopunct = re.sub(r'[^a-z0-9 ]', ' ', row_str)
-        account_type = str(row.iloc[1]).strip().upper() if len(row) > 1 else ''
         account_name = str(row.iloc[0]).strip().lower() if len(row) > 0 else ''
         for period, col_idx in period_to_col.items():
-            # If this period was merged from debit/credit, check both columns
             indices = period_map[period] if period in period_map else [col_idx]
-            value = None
+            values = []
             for i in indices:
                 if i < len(row):
                     try:
                         v = float(row.iloc[i])
-                        if math.isfinite(v) and (value is None or abs(v) > abs(value)):
-                            value = v
+                        if math.isfinite(v):
+                            values.append(v)
                     except (ValueError, TypeError):
                         continue
-            if account_type == 'IS' and any(re.search(p, account_name) for p in rev_patterns) and not any(re.search(p, account_name) for p in rev_exclude):
-                if value is not None:
-                    nwc[period][3] += value
-            elif account_type == 'BS':
-                if any(re.search(p, row_str_nopunct) for p in ar_patterns):
-                    if value is not None:
-                        nwc[period][0] += value
-                if any(re.search(p, row_str_nopunct) for p in ap_patterns):
-                    if value is not None:
-                        nwc[period][1] += value
-                if any(re.search(p, row_str_nopunct) for p in inv_patterns):
-                    if value is not None:
-                        nwc[period][2] += value
+            value_sum = sum(values) if values else None
+            value_maxabs = max(values, key=abs) if values else None
+            # Revenue
+            if any(re.search(p, account_name) for p in rev_patterns) and not any(re.search(p, account_name) for p in rev_exclude):
+                if value_sum is not None:
+                    nwc[period][3] += value_sum
+            # AR
+            if any(re.search(p, row_str_nopunct) for p in ar_patterns):
+                if value_maxabs is not None:
+                    nwc[period][0] += value_maxabs
+            # AP
+            if any(re.search(p, row_str_nopunct) for p in ap_patterns):
+                if value_maxabs is not None:
+                    nwc[period][1] += value_maxabs
+            # Inventory
+            if any(re.search(p, row_str_nopunct) for p in inv_patterns):
+                if value_maxabs is not None:
+                    nwc[period][2] += value_maxabs
     for period in periods:
         ar, ap, inv, rev = nwc[period][:4]
         ar_ratio = (ar / rev * 100) if rev else 0
@@ -231,4 +240,17 @@ def process_file(file):
         nwc[period][5] = ap_ratio
         nwc[period][6] = inv_ratio
         nwc[period][7] = working_capital_cycle
-    return periods, nwc
+    # Strip timestamps from period labels
+    def strip_timestamp(label):
+        # Extract year, quarter, or main part (e.g., '2022' from '2022-12-31', 'Q1 2022' stays)
+        match = re.search(r'(Q[1-4]\s*20\d{2})', label, re.IGNORECASE)
+        if match:
+            return match.group(1)
+        match = re.search(r'(20\d{2})', label)
+        if match:
+            return match.group(1)
+        return label.split()[0]
+    clean_periods = [strip_timestamp(p) for p in periods]
+    # Remap nwc to use clean_periods as keys
+    clean_nwc = {cp: nwc[p] for cp, p in zip(clean_periods, periods)}
+    return clean_periods, clean_nwc
