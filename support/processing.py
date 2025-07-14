@@ -242,14 +242,8 @@ def process_file(file):
         nwc[period][7] = working_capital_cycle
     # Strip timestamps from period labels
     def strip_timestamp(label):
-        # Extract year, quarter, or main part (e.g., '2022' from '2022-12-31', 'Q1 2022' stays)
-        match = re.search(r'(Q[1-4]\s*20\d{2})', label, re.IGNORECASE)
-        if match:
-            return match.group(1)
-        match = re.search(r'(20\d{2})', label)
-        if match:
-            return match.group(1)
-        return label.split()[0]
+        # Remove time-of-day if present (e.g., '01/01/2021 00:00:00' -> '01/01/2021')
+        return re.sub(r'\s+\d{1,2}:\d{2}(:\d{2})?$', '', label)
     clean_periods = [strip_timestamp(p) for p in periods]
     # Remap nwc to use clean_periods as keys
     clean_nwc = {cp: nwc[p] for cp, p in zip(clean_periods, periods)}
