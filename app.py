@@ -102,6 +102,8 @@ def chat_upload():
             f"Data: {nwc}\n"
             "Respond with plain sentences - no numbering, no formatting, no repetition of the prompt. Focus on AR/AP/Inventory trends as % of revenue and practical recommendations.\n"
             "Highlight any concerning trends or red flags in the data (eg AR rising as a % of Rev over time, or AP rising as a % of Rev over time)."
+            "If the data is not available for a period, do not make assumptions about the data for that period.\n"
+            "If the user mentions a specific industry or gives you details about the business, incorporate that into your analysis."
             )
         # Plot as % of revenue
         plot_path = plot_financial_data(ar_ratios, ap_ratios, inv_ratios, revenue_values, periods)
