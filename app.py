@@ -81,6 +81,11 @@ def chat_upload():
             ap_ratios = [reduced_nwc[p][5] for p in reduced_periods]
             inv_ratios = [reduced_nwc[p][6] for p in reduced_periods]
             wc_cycles = [reduced_nwc[p][7] for p in reduced_periods]
+            prompt = (
+            "You are a financial analyst. Based on this working capital data, provide exactly 3 sentences of analysis:\n"
+            f"Data: {reduced_nwc}\n"
+            "Respond with only 3 plain sentences - no numbering, no formatting, no repetition of the prompt. Focus on AR/AP/Inventory trends as % of revenue and practical recommendations."
+        )
         # For premium mode, use all periods and full dictionary
         if 'mode' in globals() and mode == 'premium':
             # For plotting, extract lists from nwc (all data)
@@ -92,13 +97,14 @@ def chat_upload():
             ap_ratios = [nwc[p][5] for p in periods]
             inv_ratios = [nwc[p][6] for p in periods]
             wc_cycles = [nwc[p][7] for p in periods]
+            prompt = (
+            "You are a financial analyst. Based on this working capital data, provide a brief paragraph of analysis:\n"
+            f"Data: {nwc}\n"
+            "Respond with plain sentences - no numbering, no formatting, no repetition of the prompt. Focus on AR/AP/Inventory trends as % of revenue and practical recommendations.\n"
+            "Highlight any concerning trends or red flags in the data (eg AR rising as a % of Rev over time, or AP rising as a % of Rev over time)."
+            )
         # Plot as % of revenue
         plot_path = plot_financial_data(ar_ratios, ap_ratios, inv_ratios, revenue_values, periods)
-        prompt = (
-            "You are a financial analyst. Based on this working capital data, provide exactly 3 sentences of analysis:\n"
-            f"Data: {reduced_nwc}\n"
-            "Respond with only 3 plain sentences - no numbering, no formatting, no repetition of the prompt. Focus on AR/AP/Inventory trends as % of revenue and practical recommendations."
-        )
         model_output = get_Chat_response(prompt)
         analysis = extract_analysis(model_output, prompt)
         return jsonify({'success': True, 'analysis': analysis, 'plot_path': plot_path}), 200
