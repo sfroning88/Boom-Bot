@@ -115,8 +115,31 @@ if __name__ == '__main__':
         sys.exit(1)
     mode = sys.argv[1].lower()
     if mode == 'premium':
-        # Placeholder for premium mode logic (e.g., OpenAI embeddings, 4o mini)
-        pass
+        # cheap and powerful for quick analysis
+        import openai
+        openai.api_key = os.environ.get("OPENAI_API_KEY")
+        if openai.api_key is None:
+            raise ValueError("Missing OpenAI API key. Set OPENAI_API_KEY in your environment.")
+        class OpenAIGPT4OMini:
+            def __init__(self, model_name):
+                self.model_name = model_name
+            def __call__(self, prompt, max_new_tokens=1024, do_sample=True, temperature=0.7):
+                response = openai.chat.completions.create(
+                    model=self.model_name,
+                    messages=[{"role": "system", "content": "You are a helpful financial analyst assistant."},
+                              {"role": "user", "content": prompt}],
+                    max_tokens=max_new_tokens,
+                    temperature=temperature
+                )
+                return [{
+                    'generated_text': response.choices[0].message.content
+                }]
+        model_name = "gpt-4o-mini"
+        pipe = OpenAIGPT4OMini(model_name)
+
+        # run the app
+        app.run()
+
     elif mode == 'free':
         # free model good with numerical analysis
         model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
@@ -133,4 +156,6 @@ if __name__ == '__main__':
             device=-1 # CPU
         )
 
+        # run the app
         app.run()
+
