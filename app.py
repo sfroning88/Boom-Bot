@@ -63,17 +63,18 @@ def chat_upload():
     file = request.files.get('file')
     if file:
         periods, nwc = process_file(file)
-        # Restrict data for free model (for prompt only)
-        reduced_nwc = nwc
-        reduced_periods = periods
         if 'mode' in globals() and mode == 'free':
             n_years = len(periods)
             if n_years <= 4:
-                max_periods = min(2 * n_years, 8)
+                max_periods = 2*n_years
             else:
-                max_periods = min(n_years, 8)
+                max_periods = n_years
             reduced_periods = periods[-max_periods:]
             reduced_nwc = {p: nwc[p] for p in reduced_periods}
+        # For premium mode, use all periods and full dictionary
+        if 'mode' in globals() and mode == 'premium':
+            reduced_periods = periods
+            reduced_nwc = nwc
         # For plotting, extract lists from nwc (all data)
         ar_values = [nwc[p][0] for p in periods]
         ap_values = [nwc[p][1] for p in periods]
