@@ -71,19 +71,27 @@ def chat_upload():
                 max_periods = n_years
             reduced_periods = periods[-max_periods:]
             reduced_nwc = {p: nwc[p] for p in reduced_periods}
+
+            # For plotting, extract lists from nwc (all data)
+            ar_values = [reduced_nwc[p][0] for p in reduced_periods]
+            ap_values = [reduced_nwc[p][1] for p in reduced_periods]
+            inv_values = [reduced_nwc[p][2] for p in reduced_periods]
+            revenue_values = [reduced_nwc[p][3] for p in reduced_periods]
+            ar_ratios = [reduced_nwc[p][4] for p in reduced_periods]
+            ap_ratios = [reduced_nwc[p][5] for p in reduced_periods]
+            inv_ratios = [reduced_nwc[p][6] for p in reduced_periods]
+            wc_cycles = [reduced_nwc[p][7] for p in reduced_periods]
         # For premium mode, use all periods and full dictionary
         if 'mode' in globals() and mode == 'premium':
-            reduced_periods = periods
-            reduced_nwc = nwc
-        # For plotting, extract lists from nwc (all data)
-        ar_values = [nwc[p][0] for p in periods]
-        ap_values = [nwc[p][1] for p in periods]
-        inv_values = [nwc[p][2] for p in periods]
-        revenue_values = [nwc[p][3] for p in periods]
-        ar_ratios = [nwc[p][4] for p in periods]
-        ap_ratios = [nwc[p][5] for p in periods]
-        inv_ratios = [nwc[p][6] for p in periods]
-        wc_cycles = [nwc[p][7] for p in periods]
+            # For plotting, extract lists from nwc (all data)
+            ar_values = [nwc[p][0] for p in periods]
+            ap_values = [nwc[p][1] for p in periods]
+            inv_values = [nwc[p][2] for p in periods]
+            revenue_values = [nwc[p][3] for p in periods]
+            ar_ratios = [nwc[p][4] for p in periods]
+            ap_ratios = [nwc[p][5] for p in periods]
+            inv_ratios = [nwc[p][6] for p in periods]
+            wc_cycles = [nwc[p][7] for p in periods]
         # Plot as % of revenue
         plot_path = plot_financial_data(ar_ratios, ap_ratios, inv_ratios, revenue_values, periods)
         prompt = (
