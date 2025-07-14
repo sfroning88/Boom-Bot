@@ -25,22 +25,6 @@ hf_token = os.environ.get("HUGGINGFACEHUB_API_TOKEN")
 if hf_token is None:
     raise ValueError("Missing Hugging Face token. Set HUGGINGFACEHUB_API_TOKEN in your environment.")
 
-# free model good with numerical analysis
-model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-
-# initialize the model and tokenizer
-model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-tokenizer.pad_token = tokenizer.eos_token
-
-# create a text generation pipeline
-pipe = pipeline(
-    "text-generation", 
-    model=model, 
-    tokenizer=tokenizer,
-    device=-1 # CPU
-)
-
 # create a Flask app
 app = Flask(__name__)
 
@@ -112,5 +96,29 @@ def chat_followup():
     ai_response = get_Chat_response(prompt)
     return jsonify({'success': True, 'response': ai_response}), 200
 
+import sys
 if __name__ == '__main__':
-    app.run()
+    if len(sys.argv) != 2 or sys.argv[1].lower() not in ('free', 'premium'):
+        print("Usage: python3 app.py [free|premium]")
+        sys.exit(1)
+    mode = sys.argv[1].lower()
+    if mode == 'premium':
+        # Placeholder for premium mode logic (e.g., OpenAI embeddings, 4o mini)
+        pass
+    elif mode == 'free':
+        # free model good with numerical analysis
+        model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+        
+        # initialize the model and tokenizer
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer.pad_token = tokenizer.eos_token
+        
+        pipe = pipeline(
+            "text-generation", 
+            model=model, 
+            tokenizer=tokenizer,
+            device=-1 # CPU
+        )
+
+        app.run()
