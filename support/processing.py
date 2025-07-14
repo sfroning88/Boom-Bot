@@ -221,15 +221,15 @@ def process_file(file):
             # AR
             if any(re.search(p, row_str_nopunct) for p in ar_patterns):
                 if value_maxabs is not None:
-                    nwc[period][0] += value_maxabs
+                    nwc[period][0] += abs(value_maxabs)
             # AP
             if any(re.search(p, row_str_nopunct) for p in ap_patterns):
                 if value_maxabs is not None:
-                    nwc[period][1] += value_maxabs
+                    nwc[period][1] += abs(value_maxabs)
             # Inventory
             if any(re.search(p, row_str_nopunct) for p in inv_patterns):
                 if value_maxabs is not None:
-                    nwc[period][2] += value_maxabs
+                    nwc[period][2] += abs(value_maxabs)
     for period in periods:
         ar, ap, inv, rev = nwc[period][:4]
         ar_ratio = (ar / rev * 100) if rev else 0
