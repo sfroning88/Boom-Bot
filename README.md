@@ -21,4 +21,4 @@ huggingface-cli login<br>
 
 To run the chat bot:<br>
 cd [your directory]<br>
-python3 app.py<br>
+python3 app.py [free|premium]
