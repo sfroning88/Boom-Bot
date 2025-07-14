@@ -235,5 +235,4 @@ def process_file(file):
         nwc[period][5] = ap_ratio
         nwc[period][6] = inv_ratio
         nwc[period][7] = working_capital_cycle
-    print("[DEBUG] NWC dictionary just before return:", nwc)
     return periods, nwc
