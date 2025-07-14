@@ -190,11 +190,7 @@ def process_file(file):
     data_df = df.iloc[header_rows:].reset_index(drop=True)
     nwc = {period: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for period in periods}
     period_to_col = {period: col_idx for period, col_idx in zip(periods, period_col_indices)}
-    ar_patterns = [r'accounts receivable', r'\ba\/r\b', r'\bar\b', r'trade receivables']
-    ap_patterns = [r'accounts payable', r'\ba\/p\b', r'\bap\b', r'trade payables']
-    inv_patterns = [r'inventory', r'stock', r'raw materials', r'finished goods']
-    rev_patterns = [r'revenue', r'sales', r'income', r'revenue']
-    rev_exclude = [r'expense', r'cost', r'cogs', r'loss', r'other income', r'interest income']
+    from static.definitions import ar_patterns, ap_patterns, inv_patterns, rev_patterns, rev_exclude
     for idx, row in data_df.iterrows():
         row_str = ' '.join([str(x).lower() for x in row.astype(str)])
         row_str_nopunct = re.sub(r'[^a-z0-9 ]', ' ', row_str)
