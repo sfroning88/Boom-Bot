@@ -14,8 +14,7 @@ python3 -m pip install --user -r requirements.txt<br>
 
 To authorize MacOs HuggingFace token:<br>
 echo 'export HUGGINGFACEHUB_API_TOKEN=hf_token_value' >> ~/.zshrc<br>
-echo 'export OPENAI_API_KEY=openai_key_value' >> ~/.zshrc
-
+echo 'export OPENAI_API_KEY=openai_key_value' >> ~/.zshrc<br>
 source ~/.zshrc<br>
 
 To login to HuggingFace client on shell:<br>
