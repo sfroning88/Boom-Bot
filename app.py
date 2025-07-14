@@ -63,7 +63,18 @@ def chat_upload():
     file = request.files.get('file')
     if file:
         periods, nwc = process_file(file)
-        # For plotting, extract lists from nwc
+        # Restrict data for free model (for prompt only)
+        reduced_nwc = nwc
+        reduced_periods = periods
+        if 'mode' in globals() and mode == 'free':
+            n_years = len(periods)
+            if n_years <= 4:
+                max_periods = min(2 * n_years, 8)
+            else:
+                max_periods = min(n_years, 8)
+            reduced_periods = periods[-max_periods:]
+            reduced_nwc = {p: nwc[p] for p in reduced_periods}
+        # For plotting, extract lists from nwc (all data)
         ar_values = [nwc[p][0] for p in periods]
         ap_values = [nwc[p][1] for p in periods]
         inv_values = [nwc[p][2] for p in periods]
@@ -72,14 +83,15 @@ def chat_upload():
         ap_ratios = [nwc[p][5] for p in periods]
         inv_ratios = [nwc[p][6] for p in periods]
         wc_cycles = [nwc[p][7] for p in periods]
+        # Plot as % of revenue
+        plot_path = plot_financial_data(ar_ratios, ap_ratios, inv_ratios, revenue_values, periods)
         prompt = (
             "You are a financial analyst. Based on this working capital data, provide exactly 3 sentences of analysis:\n"
-            f"Data: {nwc}\n"
+            f"Data: {reduced_nwc}\n"
             "Respond with only 3 plain sentences - no numbering, no formatting, no repetition of the prompt. Focus on AR/AP/Inventory trends as % of revenue and practical recommendations."
         )
         model_output = get_Chat_response(prompt)
         analysis = extract_analysis(model_output, prompt)
-        plot_path = plot_financial_data(ar_values, ap_values, inv_values, revenue_values, periods)
         return jsonify({'success': True, 'analysis': analysis, 'plot_path': plot_path}), 200
     return get_Chat_response(msg)
 
