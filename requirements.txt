@@ -7,4 +7,3 @@ openpyxl
 matplotlib
 numpy
 openai
-reportlab
