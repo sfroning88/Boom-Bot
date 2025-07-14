@@ -6,3 +6,4 @@ pandas
 openpyxl
 matplotlib
 numpy
+openai
