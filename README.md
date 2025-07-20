@@ -1,4 +1,4 @@
-# Boom-Bot
+# Net Working Capital Chatbot
 Accepts financial statements and conducts analysis on working capital. <br>
 Model: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.1<br>
 
